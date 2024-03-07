@@ -8,7 +8,7 @@ from PageFour import PageFour
 class MainFrame(wx.Frame):
     def __init__(self, *args, **kw):
         super(MainFrame, self).__init__(*args, **kw)
-
+        self.Bind(wx.EVT_CLOSE, self.on_close)
         # IP label and text ctrl
         self.label1 = wx.StaticText(self, label="Enter IP:")
         self.ip_input = wx.TextCtrl(self)
@@ -41,11 +41,27 @@ class MainFrame(wx.Frame):
 
         self.SetSizer(main_sizer)
 
+        save = open("save.txt", 'r')
+        values = None
+        for line in save:
+            values = line.split()
+        save.close()
+        self.ip_input.write(values[0])
+        self.port_input.write(values[1])
+
     def get_port_number(self):
         return self.port_input.GetValue()
 
     def get_ip_address(self):
         return self.ip_input.GetValue()
+
+    def on_close(self, event):
+        ip = self.ip_input.GetValue()
+        port = self.port_input.GetValue()
+        with open("save.txt", 'w') as save_file:
+            save_file.write(f"{ip} {port}")
+        save_file.close()
+        event.Skip()
 
 
 if __name__ == "__main__":
