@@ -91,6 +91,3 @@ class PageFour(wx.Panel):
         finally:
             chan.close()
             ssh.close()
-
-
-

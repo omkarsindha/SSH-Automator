@@ -10,7 +10,7 @@ class LogThread(threading.Thread):
         self.parent = parent
         self.ip = ip
         self.port = port
-        self.stop_flag = False
+        self.flag = False
 
     def run(self):
         ssh = paramiko.SSHClient()
@@ -24,19 +24,20 @@ class LogThread(threading.Thread):
         chan.get_pty()
         chan.exec_command("tail -f ../../var/log/messages")
 
-        while chan.exit_status_ready() is False:
-            if not self.stop_flag:
-                if chan.recv_ready():
-                    result = chan.recv(4096).decode("utf-8")
-                    wx.CallAfter(self.parent.update_text, result)
-                else:
-                    time.sleep(0.1)
+        while chan.exit_status_ready() is False and self.flag:
+            if chan.recv_ready():
+                result = chan.recv(4096).decode("utf-8")
+                self.parent.update_text(result)
             else:
-                chan.close()
-                ssh.close()
+                time.sleep(0.1)
+        chan.close()
+        ssh.close()
 
     def stop_logs(self):
-        self.stop_flag = True
+        self.flag = False
+
+    def start_logs(self):
+        self.flag = True
 
 
 class PageOne(wx.Panel):
@@ -46,7 +47,6 @@ class PageOne(wx.Panel):
         self.scrolled_text = None
         self.ip_text = None
         self.InitUI()
-        self.Center()
         self.log_thread = None
 
     def InitUI(self):
@@ -82,8 +82,14 @@ class PageOne(wx.Panel):
         self.SetSizer(vbox)
 
     def on_get_logs(self, event):
-        self.log_thread = LogThread(self, self.main_frame.get_ip_address(), self.main_frame.get_port_number())
-        self.log_thread.start()
+        if self.log_thread is None:
+            self.log_thread = LogThread(self, self.main_frame.get_ip_address(), self.main_frame.get_port_number())
+            self.log_thread.start_logs()
+            self.log_thread.start()
+        if self.log_thread.flag is False:
+            self.log_thread = LogThread(self, self.main_frame.get_ip_address(), self.main_frame.get_port_number())
+            self.log_thread.start_logs()
+            self.log_thread.start()
 
     def on_stop_logs(self, event):
         self.log_thread.stop_logs()
@@ -91,5 +97,5 @@ class PageOne(wx.Panel):
     def update_text(self, result):
         self.scrolled_text.AppendText(result)
 
-    def on_clear(self, result):
+    def on_clear(self, event):
         self.scrolled_text.Clear()

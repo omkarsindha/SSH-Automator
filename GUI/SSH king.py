@@ -4,6 +4,7 @@ from PageTwo import PageTwo
 from PageThree import PageThree
 from PageFour import PageFour
 
+
 class MainFrame(wx.Frame):
     def __init__(self, *args, **kw):
         super(MainFrame, self).__init__(*args, **kw)
@@ -28,7 +29,7 @@ class MainFrame(wx.Frame):
         self.page3 = PageThree(self.notebook, self)
         self.page4 = PageFour(self.notebook, self)
 
-        self.notebook.AddPage(self.page4, "FGPA Version")
+        self.notebook.AddPage(self.page4, "FPGA Version")
         self.notebook.AddPage(self.page3, "Commands")
         self.notebook.AddPage(self.page1, "Live Logs")
         self.notebook.AddPage(self.page2, "Download Logs")

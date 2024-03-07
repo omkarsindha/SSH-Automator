@@ -1,43 +1,7 @@
 import time
-import threading
 import wx
 import paramiko
-import os
 
-
-class LogThread(threading.Thread):
-    def __init__(self, parent, ip, port):
-        threading.Thread.__init__(self)
-        self.parent = parent
-        self.ip = ip
-        self.port = port
-        self.stop_flag = False
-
-    def run(self):
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        try:
-            ssh.connect(self.ip, port=self.port, username="root", password="evertz", timeout=10.0)
-        except (paramiko.SSHException, IOError) as err:
-            print("Unable to SSH to %s: %s" % (self.ip, str(err)))
-
-        chan = ssh.get_transport().open_session()
-        chan.get_pty()
-        chan.exec_command("tail -f ../../var/log/messages")
-
-        while chan.exit_status_ready() is False:
-            if not self.stop_flag:
-                if chan.recv_ready():
-                    result = chan.recv(4096).decode("utf-8")
-                    wx.CallAfter(self.parent.update_text, result)
-                else:
-                    time.sleep(0.1)
-            else:
-                chan.close()
-                ssh.close()
-
-    def stop_logs(self):
-        self.stop_flag = True
 
 class PageThree(wx.Panel):
     def __init__(self, parent, main_frame):
@@ -45,6 +9,7 @@ class PageThree(wx.Panel):
         self.main_frame = main_frame
         self.scrolled_text = None
         self.InitUI()
+        self.log_thread = None
 
     def InitUI(self):
         vbox = wx.BoxSizer(wx.VERTICAL)
@@ -83,20 +48,15 @@ class PageThree(wx.Panel):
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         try:
-            ssh.connect(self.main_frame.get_ip_address(), port=self.main_frame.get_port_number(), username="root", password="evertz", timeout=5.0)
+            ssh.connect(self.main_frame.get_ip_address(), port=self.main_frame.get_port_number(), username="root",
+                        password="evertz", timeout=5.0)
         except (paramiko.SSHException, IOError) as error:
             print("Some error occurred during SSH \n %s" % str(error))
 
         chan = ssh.get_transport().open_session()
         chan.get_pty()
         chan.exec_command("date")
-
-        while chan.exit_status_ready() is False:
-            if chan.recv_ready():
-                result = chan.recv(4096).decode("utf-8")
-                self.scrolled_text.AppendText(result)
-            else:
-                time.sleep(0.1)
+        time.sleep(1)
         if chan.recv_ready() is True:
             self.scrolled_text.AppendText(chan.recv(4096).decode("utf-8"))
 
@@ -117,12 +77,8 @@ class PageThree(wx.Panel):
         chan.get_pty()
         chan.exec_command("lspci")
 
-        while chan.exit_status_ready() is False:
-            if chan.recv_ready():
-                result = chan.recv(4096).decode("utf-8")
-                self.scrolled_text.AppendText(result)
-            else:
-                time.sleep(0.1)
+        time.sleep(2)
+
         if chan.recv_ready() is True:
             self.scrolled_text.AppendText(chan.recv(4096).decode("utf-8"))
 
@@ -157,6 +113,22 @@ class PageThree(wx.Panel):
 
     def on_top(self, event):
         self.scrolled_text.Clear()
-        if self.log_thread == None:
-            self.log_thread = LogThread(self, self.main_frame.get_ip_address(), self.main_frame.get_port_number())
-        self.log_thread.start()
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        try:
+            ssh.connect(self.main_frame.get_ip_address(), port=self.main_frame.get_port_number(), username="root",
+                        password="evertz", timeout=5.0)
+        except (paramiko.SSHException, IOError) as error:
+            print("Some error occurred during SSH \n %s" % str(error))
+
+        chan = ssh.get_transport().open_session()
+        chan.get_pty()
+        chan.exec_command("top")
+
+        time.sleep(2)
+        if chan.recv_ready() is True:
+            self.scrolled_text.AppendText(chan.recv(4096).decode("utf-8"))
+
+        chan.close()
+        ssh.close()
+
